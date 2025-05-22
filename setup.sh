@@ -9,13 +9,8 @@ read -p "Įveskite savo el. paštą (Let's Encrypt paskyrai): " EMAIL
 apt update -y
 apt install -y curl tar socat jq
 
-# 2. Įdiegiame X-UI iš arturad/x-ui
-cd /usr/local/
-curl -L -o x-ui-linux-amd64.tar.gz https://github.com/arturad/x-ui/releases/latest/download/x-ui-linux-amd64.tar.gz
-tar -xzf x-ui-linux-amd64.tar.gz
-cp x-ui/x-ui.sh /usr/bin/x-ui
-chmod +x /usr/bin/x-ui
-x-ui install
+# 2. Įdiegiame X-UI iš Arturo repozitorijos
+bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)
 
 # 3. Įdiegiame acme.sh
 if [ ! -f ~/.acme.sh/acme.sh ]; then
