@@ -1,11 +1,9 @@
 #!/bin/bash
 
-echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (RSA) =====\033[0m"
+echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (standalone, be Cloudflare API) =====\033[0m"
 
 read -p "Įvesk domeną (pvz. vpn.tavodomenas.com): " DOMAIN
-read -p "Įvesk el. paštą: " EMAIL
-read -p "Įvesk Cloudflare API Key: " CF_API
-read -p "Įvesk Cloudflare paskyros el. paštą: " CF_EMAIL
+read -p "Įvesk el. paštą (Let's Encrypt): " EMAIL
 
 # 1. Įdiegiam acme.sh jei dar nėra
 if [ ! -f ~/.acme.sh/acme.sh ]; then
@@ -14,14 +12,10 @@ if [ ! -f ~/.acme.sh/acme.sh ]; then
     source ~/.bashrc
 fi
 
-# 2. Nustatom Cloudflare API aplinką
-export CF_Key="$CF_API"
-export CF_Email="$CF_EMAIL"
+# 2. Sugeneruojam sertifikatą (RSA) per standalone metodą
+~/.acme.sh/acme.sh --issue --standalone -d "$DOMAIN" --keylength 2048 --accountemail "$EMAIL" --force
 
-# 3. Sugeneruojam RSA sertifikatą
-~/.acme.sh/acme.sh --issue --dns dns_cf -d "$DOMAIN" --keylength 2048 --accountemail "$EMAIL" --force
-
-# 4. Įrašom sertifikatus
+# 3. Įrašom sertifikatus
 mkdir -p /etc/ssl/x-ui/
 
 ~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
@@ -30,7 +24,7 @@ mkdir -p /etc/ssl/x-ui/
 --fullchain-file /etc/ssl/x-ui/cert.pem \
 --reloadcmd "x-ui restart"
 
-# 5. Įrašom į X-UI konfigūraciją
+# 4. Įrašom į X-UI konfigūraciją
 CONFIG="/usr/local/x-ui/bin/config.json"
 if [ -f "$CONFIG" ]; then
     apt install -y jq > /dev/null 2>&1
@@ -42,6 +36,6 @@ else
     exit 1
 fi
 
-# 6. Perkraunam X-UI
+# 5. Perkraunam X-UI
 x-ui restart
 echo -e "\n\033[1;32m✅ Baigta! Dabar atsidaryk: https://$DOMAIN\033[0m"
