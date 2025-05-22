@@ -31,7 +31,18 @@ sed -i "s/54321/$port/g" install.sh
 
 # Vykdom diegimą
 bash install.sh
+# Pakeičiam X-UI config.json kad naudotų SSL
+CONFIG_FILE="/etc/x-ui/config.json"
 
+if [ -f "$CONFIG_FILE" ]; then
+  sed -i 's#"cert_file":.*#"cert_file": "/root/cert/cert.crt",#' "$CONFIG_FILE"
+  sed -i 's#"key_file":.*#"key_file": "/root/cert/private.key",#' "$CONFIG_FILE"
+else
+  echo -e "\e[1;31mKlaida: nerasta $CONFIG_FILE\e[0m"
+fi
+
+# Perkraunam X-UI
+systemctl restart x-ui
 # Informacija
 echo -e "\e[1;32mDiegimas baigtas.\e[0m"
 echo -e "Adresas: https://$domain:$port"
