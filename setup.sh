@@ -3,19 +3,16 @@
 echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (be Cloudflare) =====\033[0m"
 
 read -p "Įvesk domeną (pvz. vpn.tavodomenas.com): " DOMAIN
-read -p "Įvesk el. paštą (Let's Encrypt): " EMAIL
+read -p "Įvesk el. paštą: " EMAIL
 
-# 0. Įdiegiame X-UI (jei nėra)
-bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
-
-# 1. Įdiegiam socat, curl, jq ir acme.sh
+# 1. Įdiegiam socat ir acme.sh
 apt update -y
 apt install socat curl jq -y
 
 curl https://get.acme.sh | sh
 source ~/.bashrc
 
-# 2. Generuojam sertifikatą naudodami standalone metodą (80 portas turi būti laisvas)
+# 2. Generuojam sertifikatą naudodami standalone metodą
 ~/.acme.sh/acme.sh --issue -d $DOMAIN --standalone --keylength 2048 --accountemail $EMAIL --force
 if [ $? -ne 0 ]; then
   echo -e "\033[1;31mSertifikato generavimas nepavyko!\033[0m"
