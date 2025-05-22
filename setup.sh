@@ -1,38 +1,47 @@
 #!/bin/bash
 
-clear
-echo -e "\e[1;32m=== Arturo X-UI Setup ===\e[0m"
-[[ $EUID -ne 0 ]] && echo "Run as root" && exit 1
+echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (RSA) =====\033[0m"
 
-read -p "Įveskite domeną (naudojamas per Cloudflare): " domain
-read -p "Įveskite el. pašto adresą (SSL): " email
-read -p "Įveskite prievadą (pvz. 443): " port
+read -p "Įvesk domeną (pvz. vpn.tavodomenas.com): " DOMAIN
+read -p "Įvesk el. paštą: " EMAIL
+read -p "Įvesk Cloudflare API Key: " CF_API
+read -p "Įvesk Cloudflare paskyros el. paštą: " CF_EMAIL
 
-# 1. ACME įdiegimas
-curl https://get.acme.sh | sh
-source ~/.bashrc
-~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-
-# 2. SSL sertifikato išdavimas
-~/.acme.sh/acme.sh --issue --standalone -d $domain --keylength ec-256 --accountemail $email
-
-# 3. Failų kopijavimas
-mkdir -p /etc/ssl/x-ui
-~/.acme.sh/acme.sh --install-cert -d $domain --ecc \
---fullchain-file /etc/ssl/x-ui/cert.pem \
---key-file /etc/ssl/x-ui/key.pem
-
-# 4. X-UI diegimas
-bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
-
-# 5. config.json nustatymas
-CONFIG="/usr/local/x-ui/bin/config.json"
-if [[ -f "$CONFIG" ]]; then
-    jq ".ssl = true | .ssl_certificate = \"/etc/ssl/x-ui/cert.pem\" | .ssl_key = \"/etc/ssl/x-ui/key.pem\" | .port = $port" "$CONFIG" > temp.json && mv temp.json "$CONFIG"
+# 1. Įdiegiam acme.sh jei dar nėra
+if [ ! -f ~/.acme.sh/acme.sh ]; then
+    echo "Diegiam acme.sh..."
+    curl https://get.acme.sh | sh
+    source ~/.bashrc
 fi
 
-# 6. X-UI perkrovimas
-x-ui restart
+# 2. Nustatom Cloudflare API aplinką
+export CF_Key="$CF_API"
+export CF_Email="$CF_EMAIL"
 
-echo -e "\n\e[1;32mInstaliavimas baigtas. Atidarykite:\e[0m"
-echo -e "https://$domain:$port/"
+# 3. Sugeneruojam RSA sertifikatą
+~/.acme.sh/acme.sh --issue --dns dns_cf -d "$DOMAIN" --keylength 2048 --accountemail "$EMAIL" --force
+
+# 4. Įrašom sertifikatus
+mkdir -p /etc/ssl/x-ui/
+
+~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
+--cert-file /root/cert.crt \
+--key-file /root/private.key \
+--fullchain-file /etc/ssl/x-ui/cert.pem \
+--reloadcmd "x-ui restart"
+
+# 5. Įrašom į X-UI konfigūraciją
+CONFIG="/usr/local/x-ui/bin/config.json"
+if [ -f "$CONFIG" ]; then
+    apt install -y jq > /dev/null 2>&1
+    jq --arg cert "/root/cert.crt" --arg key "/root/private.key" \
+    '.ssl.cert = $cert | .ssl.key = $key' "$CONFIG" > temp && mv temp "$CONFIG"
+    echo -e "\033[1;32mSertifikatų keliai įrašyti į $CONFIG\033[0m"
+else
+    echo -e "\033[1;31mKLAIDA: nerasta $CONFIG\033[0m"
+    exit 1
+fi
+
+# 6. Perkraunam X-UI
+x-ui restart
+echo -e "\n\033[1;32m✅ Baigta! Dabar atsidaryk: https://$DOMAIN\033[0m"
