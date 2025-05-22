@@ -9,7 +9,7 @@ read -p "Įveskite savo el. paštą (Let's Encrypt paskyrai): " EMAIL
 apt update -y
 apt install -y curl tar socat jq
 
-# 2. Įdiegiame X-UI iš Arturo repozitorijos
+# 2. Įdiegiame X-UI 
 bash <(curl -Ls https://raw.githubusercontent.com/alireza0/x-ui/master/install.sh)
 
 # 3. Įdiegiame acme.sh
