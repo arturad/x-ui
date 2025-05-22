@@ -1,48 +1,38 @@
 #!/bin/bash
 
 clear
-echo -e "\e[1;32m=== Arturo X-UI diegimas ===\e[0m"
+echo -e "\e[1;32m=== Arturo X-UI Setup ===\e[0m"
+[[ $EUID -ne 0 ]] && echo "Run as root" && exit 1
 
-read -p "Įvesk domeną (pvz. vpn.tavo-domenas.com): " domain
-read -p "Įvesk el. paštą (SSL registracijai): " email
-read -p "Pasirink X-UI prisijungimo prievadą (pvz. 54321): " port
+read -p "Įveskite domeną (naudojamas per Cloudflare): " domain
+read -p "Įveskite el. pašto adresą (SSL): " email
+read -p "Įveskite prievadą (pvz. 443): " port
 
-# Sistemos atnaujinimas ir reikalingų paketų diegimas
-apt update && apt upgrade -y
-apt install curl socat git -y
-
-# Diegiam acme.sh
+# 1. ACME įdiegimas
 curl https://get.acme.sh | sh
+source ~/.bashrc
 ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-~/.acme.sh/acme.sh --register-account -m $email
-~/.acme.sh/acme.sh --issue -d $domain --standalone --force
-mkdir -p /root/cert
-~/.acme.sh/acme.sh --install-cert -d $domain \
---key-file /root/cert/private.key \
---fullchain-file /root/cert/cert.crt
 
-# Atsisiunčiam X-UI iš fork'o
-cd /root
-git clone https://github.com/arturad/x-ui.git
-cd x-ui
+# 2. SSL sertifikato išdavimas
+~/.acme.sh/acme.sh --issue --standalone -d $domain --keylength ec-256 --accountemail $email
 
-# Nustatom paleidimo portą
-sed -i "s/54321/$port/g" install.sh
+# 3. Failų kopijavimas
+mkdir -p /etc/ssl/x-ui
+~/.acme.sh/acme.sh --install-cert -d $domain --ecc \
+--fullchain-file /etc/ssl/x-ui/cert.pem \
+--key-file /etc/ssl/x-ui/key.pem
 
-# Vykdom diegimą
-bash install.sh
-# Pakeičiam X-UI config.json kad naudotų SSL
-CONFIG_FILE="/etc/x-ui/config.json"
+# 4. X-UI diegimas
+bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
 
-if [ -f "$CONFIG_FILE" ]; then
-  sed -i 's#"cert_file":.*#"cert_file": "/root/cert/cert.crt",#' "$CONFIG_FILE"
-  sed -i 's#"key_file":.*#"key_file": "/root/cert/private.key",#' "$CONFIG_FILE"
-else
-  echo -e "\e[1;31mKlaida: nerasta $CONFIG_FILE\e[0m"
+# 5. config.json nustatymas
+CONFIG="/usr/local/x-ui/bin/config.json"
+if [[ -f "$CONFIG" ]]; then
+    jq ".ssl = true | .ssl_certificate = \"/etc/ssl/x-ui/cert.pem\" | .ssl_key = \"/etc/ssl/x-ui/key.pem\" | .port = $port" "$CONFIG" > temp.json && mv temp.json "$CONFIG"
 fi
 
-# Perkraunam X-UI
-systemctl restart x-ui
-# Informacija
-echo -e "\e[1;32mDiegimas baigtas.\e[0m"
-echo -e "Adresas: https://$domain:$port"
+# 6. X-UI perkrovimas
+x-ui restart
+
+echo -e "\n\e[1;32mInstaliavimas baigtas. Atidarykite:\e[0m"
+echo -e "https://$domain:$port/"
