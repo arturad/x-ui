@@ -1,41 +1,48 @@
 #!/bin/bash
 
-echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (standalone, be Cloudflare API) =====\033[0m"
+echo -e "\033[1;32m===== X-UI automatizuotas SSL instaliavimas (be Cloudflare) =====\033[0m"
 
 read -p "Įvesk domeną (pvz. vpn.tavodomenas.com): " DOMAIN
 read -p "Įvesk el. paštą (Let's Encrypt): " EMAIL
 
-# 1. Įdiegiam acme.sh jei dar nėra
-if [ ! -f ~/.acme.sh/acme.sh ]; then
-    echo "Diegiam acme.sh..."
-    curl https://get.acme.sh | sh
-    source ~/.bashrc
+# 0. Įdiegiame X-UI (jei nėra)
+bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+
+# 1. Įdiegiam socat, curl, jq ir acme.sh
+apt update -y
+apt install socat curl jq -y
+
+curl https://get.acme.sh | sh
+source ~/.bashrc
+
+# 2. Generuojam sertifikatą naudodami standalone metodą (80 portas turi būti laisvas)
+~/.acme.sh/acme.sh --issue -d $DOMAIN --standalone --keylength 2048 --accountemail $EMAIL --force
+if [ $? -ne 0 ]; then
+  echo -e "\033[1;31mSertifikato generavimas nepavyko!\033[0m"
+  exit 1
 fi
 
-# 2. Sugeneruojam sertifikatą (RSA) per standalone metodą
-~/.acme.sh/acme.sh --issue --standalone -d "$DOMAIN" --keylength 2048 --accountemail "$EMAIL" --force
-
-# 3. Įrašom sertifikatus
+# 3. Sukuriam katalogą sertifikatams
 mkdir -p /etc/ssl/x-ui/
 
-~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
---cert-file /root/cert.crt \
---key-file /root/private.key \
+# 4. Įrašom sertifikatus
+~/.acme.sh/acme.sh --install-cert -d $DOMAIN \
+--key-file /etc/ssl/x-ui/key.pem \
 --fullchain-file /etc/ssl/x-ui/cert.pem \
 --reloadcmd "x-ui restart"
 
-# 4. Įrašom į X-UI konfigūraciją
+# 5. Atnaujinam X-UI konfigūraciją
 CONFIG="/usr/local/x-ui/bin/config.json"
 if [ -f "$CONFIG" ]; then
-    apt install -y jq > /dev/null 2>&1
-    jq --arg cert "/root/cert.crt" --arg key "/root/private.key" \
-    '.ssl.cert = $cert | .ssl.key = $key' "$CONFIG" > temp && mv temp "$CONFIG"
-    echo -e "\033[1;32mSertifikatų keliai įrašyti į $CONFIG\033[0m"
+  jq --arg cert "/etc/ssl/x-ui/cert.pem" --arg key "/etc/ssl/x-ui/key.pem" \
+  '.ssl.cert = $cert | .ssl.key = $key' "$CONFIG" > temp && mv temp "$CONFIG"
+  echo -e "\033[1;32mSertifikatų keliai įrašyti į $CONFIG\033[0m"
 else
-    echo -e "\033[1;31mKLAIDA: nerasta $CONFIG\033[0m"
-    exit 1
+  echo -e "\033[1;31mKLAIDA: nerasta $CONFIG\033[0m"
+  exit 1
 fi
 
-# 5. Perkraunam X-UI
+# 6. Perkraunam X-UI
 x-ui restart
-echo -e "\n\033[1;32m✅ Baigta! Dabar atsidaryk: https://$DOMAIN\033[0m"
+
+echo -e "\n\033[1;32m✅ Baigta! Atidaryk naršyklę: https://$DOMAIN\033[0m"
