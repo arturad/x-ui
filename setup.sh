@@ -24,7 +24,7 @@ mkdir -p /root/cert
 # Atsisiunčiam X-UI iš fork'o
 cd /root
 git clone https://github.com/arturad/x-ui.git
-cd arturo-x-ui
+cd x-ui
 
 # Nustatom paleidimo portą
 sed -i "s/54321/$port/g" install.sh
