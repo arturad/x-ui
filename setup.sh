@@ -23,7 +23,7 @@ mkdir -p /root/cert
 
 # Atsisiunčiam X-UI iš fork'o
 cd /root
-git clone https://github.com/arturad/arturo-x-ui.git
+git clone https://github.com/arturad/-x-ui.git
 cd arturo-x-ui
 
 # Nustatom paleidimo portą
