@@ -10,7 +10,7 @@ apt update -y
 apt install -y curl tar socat jq
 
 # 2. Įdiegiame X-UI iš Arturo repozitorijos
-bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/alireza0/x-ui/master/install.sh)
 
 # 3. Įdiegiame acme.sh
 if [ ! -f ~/.acme.sh/acme.sh ]; then
