@@ -1,4 +1,4 @@
-#!/bin/bash
+⁸#!/bin/bash
 
 red='\033[0;31m'
 green='\033[0;32m'
@@ -116,7 +116,7 @@ install_x-ui() {
     cd /usr/local/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/arturad/x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        last_version=$(curl -Ls -H "User-Agent: x-ui-installer" "https://api.github.com/repos/arturad/x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
             echo -e "${red}Failed to fetch x-ui version${plain}"
             exit 1
