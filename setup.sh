@@ -10,7 +10,7 @@ apt update -y
 apt install -y curl tar socat jq
 
 # 2. Įdiegiame X-UI 
-bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)
 
 # 3. Įdiegiame acme.sh
 if [ ! -f ~/.acme.sh/acme.sh ]; then
