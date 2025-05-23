@@ -17,7 +17,7 @@
 2. **Paleisk šią komandą:**
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh) && bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/setup.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/setup.sh)
 ```
 
 3. **Įvesk:**
