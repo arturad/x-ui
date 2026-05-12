@@ -37,7 +37,7 @@ arch() {
 }
 
 echo "arch: $(arch)"
-
+arch=$(arch)
 os_version=""
 os_version=$(grep "^VERSION_ID" /etc/os-release | cut -d '=' -f2 | tr -d '"' | tr -d '.')
 
