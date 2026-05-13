@@ -32,6 +32,7 @@ echo -e "${YELLOW}Diegiama 3X-UI panelė...${PLAIN}"
 
 echo -e "${YELLOW}Diegiama pati 3X-UI panelė...${PLAIN}"
 x-ui install
+sleep 5
 echo -e "${YELLOW}Tikrinama ar x-ui įsidiegė...${PLAIN}"
 if [ ! -f /usr/local/x-ui/bin/config.json ]; then
     echo -e "${RED}KLAIDA: nerasta /usr/local/x-ui/bin/config.json${PLAIN}"
