@@ -1,53 +1,81 @@
 #!/bin/bash
 
-echo -e "\033[1;32m===== X-UI pilnas diegimas su Let's Encrypt SSL (be API) =====\033[0m"
+set -e
 
-read -p "Įveskite savo domeną (pvz. vpn.tavodomenas.com): " DOMAIN
-read -p "Įveskite savo el. paštą (Let's Encrypt paskyrai): " EMAIL
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[1;33m"
+PLAIN="\033[0m"
 
-# 1. Atnaujinimai ir priklausomybės
+echo -e "${GREEN}=== Arturo 3X-UI automatinis diegimas ===${PLAIN}"
+
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${RED}Paleisk kaip root!${PLAIN}"
+    exit 1
+fi
+
+read -rp "Įvesk domeną, pvz. panel.tavodomenas.lt: " DOMAIN
+read -rp "Įvesk el. paštą SSL sertifikatui: " EMAIL
+
+if [[ -z "$DOMAIN" || -z "$EMAIL" ]]; then
+    echo -e "${RED}Domenas arba el. paštas neįvestas.${PLAIN}"
+    exit 1
+fi
+
+echo -e "${YELLOW}Atnaujinami paketai...${PLAIN}"
 apt update -y
-apt install -y curl tar socat jq
+apt install -y curl wget socat tar unzip cron
 
-# 2. Įdiegiame X-UI 
+echo -e "${YELLOW}Diegiama 3X-UI panelė...${PLAIN}"
 bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)
 
-# 3. Įdiegiame acme.sh
-if [ ! -f ~/.acme.sh/acme.sh ]; then
-  curl https://get.acme.sh | sh
-  source ~/.bashrc
+echo -e "${YELLOW}Tikrinama ar x-ui įsidiegė...${PLAIN}"
+if [ ! -f /usr/local/x-ui/bin/config.json ]; then
+    echo -e "${RED}KLAIDA: nerasta /usr/local/x-ui/bin/config.json${PLAIN}"
+    echo -e "${YELLOW}Pirma patikrink install.sh:${PLAIN}"
+    echo "bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)"
+    exit 1
 fi
 
-# 4. Naudojame Let's Encrypt, ne ZeroSSL
+echo -e "${GREEN}x-ui įdiegtas sėkmingai.${PLAIN}"
+
+echo -e "${YELLOW}Diegiamas acme.sh...${PLAIN}"
+curl https://get.acme.sh | sh
+
+export PATH="/root/.acme.sh:$PATH"
+
 ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+~/.acme.sh/acme.sh --register-account -m "$EMAIL" || true
 
-# 5. Generuojame sertifikatą
-~/.acme.sh/acme.sh --issue -d "$DOMAIN" --standalone --accountemail "$EMAIL" --keylength 2048 --force
-if [ $? -ne 0 ]; then
-  echo -e "\033[1;31mSertifikato generavimas nepavyko.\033[0m"
-  exit 1
-fi
+echo -e "${YELLOW}Stabdomas x-ui, kad 80 portas būtų laisvas...${PLAIN}"
+systemctl stop x-ui || true
 
-# 6. Sukuriame katalogą
-mkdir -p /etc/ssl/x-ui/
+echo -e "${YELLOW}Generuojamas SSL sertifikatas domenui: $DOMAIN${PLAIN}"
+~/.acme.sh/acme.sh --issue -d "$DOMAIN" --standalone --force
 
-# 7. Įrašome sertifikatus
+mkdir -p /etc/ssl/x-ui
+
 ~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
---key-file /etc/ssl/x-ui/key.pem \
---fullchain-file /etc/ssl/x-ui/cert.pem
+  --key-file /etc/ssl/x-ui/key.pem \
+  --fullchain-file /etc/ssl/x-ui/cert.pem \
+  --reloadcmd "systemctl restart x-ui"
 
-# 8. Atnaujiname X-UI config.json
+echo -e "${YELLOW}Įrašomi SSL keliai į x-ui config.json...${PLAIN}"
+
 CONFIG="/usr/local/x-ui/bin/config.json"
-if [ -f "$CONFIG" ]; then
-  jq --arg cert "/etc/ssl/x-ui/cert.pem" --arg key "/etc/ssl/x-ui/key.pem" \
-  '.ssl.cert = $cert | .ssl.key = $key' "$CONFIG" > temp && mv temp "$CONFIG"
-  echo -e "\033[1;32mKeliai įrašyti į $CONFIG\033[0m"
-else
-  echo -e "\033[1;31mKLAIDA: nerasta $CONFIG\033[0m"
-  exit 1
-fi
 
-# 9. Perkraunam X-UI
-x-ui restart
+sed -i 's|"certFile": *"[^"]*"|"certFile": "/etc/ssl/x-ui/cert.pem"|g' "$CONFIG"
+sed -i 's|"keyFile": *"[^"]*"|"keyFile": "/etc/ssl/x-ui/key.pem"|g' "$CONFIG"
 
-echo -e "\n\033[1;32m✅ Baigta! Atidarykite: https://$DOMAIN\033[0m"
+echo -e "${YELLOW}Paleidžiama panelė...${PLAIN}"
+systemctl daemon-reload
+systemctl enable x-ui
+systemctl restart x-ui
+
+echo -e "${GREEN}======================================${PLAIN}"
+echo -e "${GREEN}Diegimas baigtas.${PLAIN}"
+echo -e "${GREEN}Domenas: https://$DOMAIN${PLAIN}"
+echo -e "${YELLOW}Panelės duomenis rasi su komanda:${PLAIN}"
+echo "x-ui"
+echo "Tada rinkis: 10 View Current Settings"
+echo -e "${GREEN}======================================${PLAIN}"
