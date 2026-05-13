@@ -28,7 +28,10 @@ apt install -y curl wget socat tar unzip cron
 
 echo -e "${YELLOW}Diegiama 3X-UI panelė...${PLAIN}"
 bash <(curl -Ls https://raw.githubusercontent.com/arturad/x-ui/main/install.sh)
+echo -e "${YELLOW}Diegiama 3X-UI panelė...${PLAIN}"
 
+echo -e "${YELLOW}Diegiama pati 3X-UI panelė...${PLAIN}"
+x-ui install
 echo -e "${YELLOW}Tikrinama ar x-ui įsidiegė...${PLAIN}"
 if [ ! -f /usr/local/x-ui/bin/config.json ]; then
     echo -e "${RED}KLAIDA: nerasta /usr/local/x-ui/bin/config.json${PLAIN}"
