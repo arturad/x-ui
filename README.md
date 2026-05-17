@@ -1,5 +1,5 @@
 
-# X-UI (Arturo versija)
+# 3X-UI (Arturo versija)
 
 **Moderni Xray pagrindu veikianti administravimo panelė**
 
